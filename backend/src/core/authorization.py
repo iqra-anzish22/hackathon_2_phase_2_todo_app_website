@@ -7,6 +7,7 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..models.task import Task
 from .errors import AppException, ERROR_TASK_NOT_FOUND, ERROR_FORBIDDEN
+from .logging import logger
 
 
 async def get_user_task_or_404(
@@ -52,6 +53,15 @@ async def get_user_task_or_404(
 
     # Check ownership
     if task.user_id != user_id:
+        # Log authorization failure with user_id and resource_id (non-sensitive)
+        logger.warning(
+            f"User attempted to access task owned by another user",
+            extra={
+                "event_type": "authz_failure",
+                "user_id": user_id,
+                "resource_id": str(task_id)
+            }
+        )
         raise AppException(
             status_code=403,
             error_code=ERROR_FORBIDDEN,

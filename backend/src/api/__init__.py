@@ -1,4 +1,1 @@
-"""
-API package.
-Contains API routes and dependencies.
-"""
+"""API package for routes and dependencies."""

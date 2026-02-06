@@ -5,11 +5,14 @@
  * Uses Better Auth for user authentication and JWT token issuance.
  * Handles authentication errors with user-friendly feedback.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { LogIn, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 import { ApiError } from '@/types/errors';
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/tasks';
@@ -41,135 +44,219 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      // Call Better Auth sign-in endpoint
-      const response = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-
-        // Parse structured error response
-        if (data?.error_code) {
-          setError(data as ApiError);
-        } else {
-          setError({
-            error_code: 'AUTH_FAILED',
-            message: data?.message || 'Invalid email or password. Please try again.',
-          });
-        }
-        return;
-      }
+      // Call FastAPI backend signin endpoint
+      const { signin } = await import('@/lib/auth-api');
+      await signin({ email, password });
 
       // Redirect to original destination or tasks page on success
       router.push(redirect);
-    } catch (err) {
-      setError({
-        error_code: 'NETWORK_ERROR',
-        message: 'Unable to connect. Please check your internet connection and try again.',
-      });
+    } catch (err: any) {
+      // Parse structured error response from FastAPI
+      if (err?.error_code) {
+        setError(err as ApiError);
+      } else {
+        setError({
+          error_code: 'AUTH_FAILED',
+          message: err?.message || 'Invalid email or password. Please try again.',
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const getErrorTitle = (errorCode: string) => {
+    switch (errorCode) {
+      case 'TOKEN_EXPIRED':
+        return 'Session Expired';
+      case 'MISSING_TOKEN':
+        return 'Authentication Required';
+      case 'AUTH_FAILED':
+        return 'Sign In Failed';
+      case 'NETWORK_ERROR':
+        return 'Connection Error';
+      default:
+        return 'Error';
+    }
+  };
+
   return (
-    <div style={{ maxWidth: '400px', margin: '100px auto', padding: '20px' }}>
-      <h1>Sign In</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
-          <label htmlFor="email" style={{ display: 'block', marginBottom: '5px' }}>
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              padding: '8px',
-              fontSize: '16px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-            }}
-          />
-        </div>
-        <div style={{ marginBottom: '15px' }}>
-          <label htmlFor="password" style={{ display: 'block', marginBottom: '5px' }}>
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              padding: '8px',
-              fontSize: '16px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-            }}
-          />
-        </div>
-        {error && (
-          <div
-            style={{
-              padding: '12px',
-              marginBottom: '15px',
-              backgroundColor: '#fee',
-              border: '1px solid #fcc',
-              borderRadius: '4px',
-              color: '#c33',
-            }}
-          >
-            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-              {error.error_code === 'TOKEN_EXPIRED' && 'Session Expired'}
-              {error.error_code === 'MISSING_TOKEN' && 'Authentication Required'}
-              {error.error_code === 'AUTH_FAILED' && 'Sign In Failed'}
-              {error.error_code === 'NETWORK_ERROR' && 'Connection Error'}
-              {!['TOKEN_EXPIRED', 'MISSING_TOKEN', 'AUTH_FAILED', 'NETWORK_ERROR'].includes(error.error_code) && 'Error'}
-            </div>
-            <div style={{ fontSize: '14px' }}>{error.message}</div>
-            {error.details && error.details.length > 0 && (
-              <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '14px' }}>
-                {error.details.map((detail, index) => (
-                  <li key={index}>
-                    <strong>{detail.field}:</strong> {detail.message}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '10px',
-            fontSize: '16px',
-            backgroundColor: '#0070f3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: loading ? 'not-allowed' : 'pointer',
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-primary-50 via-white to-primary-50 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 pointer-events-none">
+        <motion.div
+          className="absolute top-20 left-10 w-72 h-72 bg-primary-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
+          animate={{
+            scale: [1, 1.2, 1],
+            x: [0, 50, 0],
+            y: [0, 30, 0],
           }}
-        >
-          {loading ? 'Signing in...' : 'Sign In'}
-        </button>
-      </form>
-      <p style={{ marginTop: '20px', textAlign: 'center' }}>
-        Don't have an account?{' '}
-        <a href="/signup" style={{ color: '#0070f3' }}>
-          Sign Up
-        </a>
-      </p>
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div
+          className="absolute bottom-20 right-10 w-72 h-72 bg-primary-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
+          animate={{
+            scale: [1, 1.3, 1],
+            x: [0, -50, 0],
+            y: [0, -30, 0],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1
+          }}
+        />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="w-full max-w-md relative z-10"
+      >
+        {/* Card */}
+        <div className="card shadow-2xl border border-primary-100 bg-white/90 backdrop-blur-sm">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+              className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl mb-4 shadow-lg"
+            >
+              <LogIn className="w-10 h-10 text-white" />
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-3xl font-bold text-gray-900 mb-2"
+            >
+              Welcome Back
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-gray-600"
+            >
+              Sign in to your account to continue
+            </motion.p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Field */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="input-field"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="input-field"
+                placeholder="Enter your password"
+              />
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-red-50 border border-red-200 rounded-lg p-4"
+              >
+                <div className="flex items-start">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-red-800 mb-1">
+                      {getErrorTitle(error.error_code)}
+                    </h3>
+                    <p className="text-sm text-red-700">{error.message}</p>
+                    {error.details && error.details.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {error.details.map((detail, index) => (
+                          <li key={index} className="text-sm text-red-600">
+                            <strong>{detail.field}:</strong> {detail.message}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Submit Button */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed text-lg py-3 shadow-lg hover:shadow-xl"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                  />
+                  Signing in...
+                </span>
+              ) : (
+                'Sign In'
+              )}
+            </motion.button>
+          </form>
+
+          {/* Footer */}
+          <div className="mt-6 text-center">
+            <p className="text-gray-600">
+              Don't have an account?{' '}
+              <Link href="/signup" className="text-primary-600 hover:text-primary-700 font-medium transition-colors">
+                Sign Up
+              </Link>
+            </p>
+          </div>
+        </div>
+      </motion.div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   );
 }

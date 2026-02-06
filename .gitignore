@@ -65,3 +65,29 @@ htmlcov/
 *.bak
 *.orig
 .cache/
+
+
+
+
+
+# Windows reserved files (CRITICAL)
+nul
+frontend/nul
+
+# Databases
+*.db
+backend/database.db
+
+# Project history / internal notes
+history/
+
+# Environment files
+.env
+.env.*
+backend/.env*
+frontend/.env*
+
+# Databases
+*.db
+backend/database.db
+

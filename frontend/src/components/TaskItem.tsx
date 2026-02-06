@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * TaskItem component - displays a single task in the list.
  * Includes delete functionality, completion toggle, and link to detail view.
@@ -7,6 +9,8 @@ import { ApiError } from '@/types/errors';
 import { apiRequest } from '@/lib/api';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Trash2, CheckCircle2, Circle, AlertCircle, Calendar } from 'lucide-react';
 
 interface TaskItemProps {
   task: Task;
@@ -70,105 +74,115 @@ export default function TaskItem({ task, onDeleted, onUpdated }: TaskItemProps) 
   };
 
   return (
-    <div
+    <motion.div
+      whileHover={{ scale: 1.01, y: -2 }}
+      whileTap={{ scale: 0.99 }}
       onClick={handleClick}
-      style={{
-        padding: '15px',
-        marginBottom: '10px',
-        border: '1px solid #ddd',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        backgroundColor: task.completed ? '#f0f8f0' : 'white',
-        transition: 'box-shadow 0.2s',
-        opacity: task.completed ? 0.8 : 1,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'none';
-      }}
+      className={`card cursor-pointer transition-all duration-300 ${
+        task.completed
+          ? 'bg-gradient-to-br from-gray-50 to-gray-100 opacity-90 border border-gray-200'
+          : 'bg-white hover:shadow-xl hover:border-primary-200 border border-transparent'
+      }`}
     >
+      {/* Error Message */}
       {error && (
-        <div style={{
-          padding: '8px',
-          marginBottom: '10px',
-          backgroundColor: '#fee',
-          border: '1px solid #fcc',
-          borderRadius: '4px',
-          color: '#c33',
-          fontSize: '14px',
-        }}>
-          {error}
-        </div>
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-start gap-2"
+        >
+          <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-red-700">{error}</p>
+        </motion.div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-        <div style={{ display: 'flex', alignItems: 'start', flex: 1, gap: '12px' }}>
-          <button
+
+      <div className="flex items-start justify-between gap-4">
+        {/* Left Section: Checkbox + Content */}
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          {/* Completion Toggle Button */}
+          <motion.button
+            whileHover={{ scale: 1.15 }}
+            whileTap={{ scale: 0.85 }}
             onClick={handleToggleComplete}
             disabled={toggling}
-            style={{
-              width: '24px',
-              height: '24px',
-              borderRadius: '50%',
-              border: '2px solid #0070f3',
-              backgroundColor: task.completed ? '#0070f3' : 'white',
-              cursor: toggling ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '14px',
-              flexShrink: 0,
-              marginTop: '2px',
-            }}
+            className={`flex-shrink-0 mt-1 transition-all duration-200 ${
+              toggling ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+            }`}
           >
-            {task.completed && '✓'}
-          </button>
-          <div style={{ flex: 1 }}>
-            <h3 style={{
-              margin: '0 0 8px 0',
-              fontSize: '18px',
-              textDecoration: task.completed ? 'line-through' : 'none',
-              color: task.completed ? '#666' : '#000',
-            }}>
+            {task.completed ? (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 500, damping: 15 }}
+              >
+                <CheckCircle2 className="w-6 h-6 text-green-600" />
+              </motion.div>
+            ) : (
+              <Circle className="w-6 h-6 text-gray-400 hover:text-primary-600 transition-colors" />
+            )}
+          </motion.button>
+
+          {/* Task Content */}
+          <div className="flex-1 min-w-0">
+            <h3
+              className={`text-lg font-semibold mb-1 ${
+                task.completed
+                  ? 'text-gray-500 line-through'
+                  : 'text-gray-900'
+              }`}
+            >
               {task.title}
             </h3>
+
             {task.description && (
-              <p style={{
-                margin: '0 0 8px 0',
-                color: '#666',
-                fontSize: '14px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                textDecoration: task.completed ? 'line-through' : 'none',
-              }}>
+              <p
+                className={`text-sm mb-2 truncate ${
+                  task.completed
+                    ? 'text-gray-400 line-through'
+                    : 'text-gray-600'
+                }`}
+              >
                 {task.description}
               </p>
             )}
-            <div style={{ fontSize: '12px', color: '#999' }}>
-              {task.completed ? '✓ Completed' : '○ Incomplete'} •
-              Created {new Date(task.created_at).toLocaleDateString()}
+
+            {/* Metadata */}
+            <div className="flex items-center gap-3 text-xs text-gray-500">
+              <span className={`flex items-center gap-1 ${
+                task.completed ? 'text-green-600' : 'text-gray-500'
+              }`}>
+                {task.completed ? (
+                  <>
+                    <CheckCircle2 className="w-3 h-3" />
+                    Completed
+                  </>
+                ) : (
+                  <>
+                    <Circle className="w-3 h-3" />
+                    Incomplete
+                  </>
+                )}
+              </span>
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                {new Date(task.created_at).toLocaleDateString()}
+              </span>
             </div>
           </div>
         </div>
-        <button
+
+        {/* Right Section: Delete Button */}
+        <motion.button
+          whileHover={{ scale: 1.08, rotate: 2 }}
+          whileTap={{ scale: 0.92 }}
           onClick={handleDelete}
           disabled={deleting}
-          style={{
-            padding: '6px 12px',
-            backgroundColor: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: deleting ? 'not-allowed' : 'pointer',
-            fontSize: '14px',
-          }}
+          className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium shadow-md hover:shadow-lg"
         >
+          <Trash2 className="w-4 h-4" />
           {deleting ? 'Deleting...' : 'Delete'}
-        </button>
+        </motion.button>
       </div>
-    </div>
+    </motion.div>
   );
 }

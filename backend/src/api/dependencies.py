@@ -9,7 +9,7 @@ from ..core.security import verify_jwt
 from ..core.errors import AppException, ERROR_MISSING_TOKEN
 
 
-# HTTP Bearer token security scheme (auto_error=False to handle missing tokens ourselves)
+# HTTP Bearer token security scheme
 security = HTTPBearer(auto_error=False)
 
 

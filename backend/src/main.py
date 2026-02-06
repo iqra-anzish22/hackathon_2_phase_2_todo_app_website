@@ -1,35 +1,48 @@
 """
-FastAPI application entry point.
-Initializes the app with CORS configuration and routes.
+FastAPI Authentication Backend - FRESH VERSION
 """
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
+from datetime import datetime
+
 from .core.config import settings
 from .core.database import init_db, close_db
 from .core.errors import AppException
-from .schemas.errors import ErrorResponse, ErrorDetail
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Lifespan context manager for startup and shutdown events.
-    """
-    # Startup: Initialize database
-    await init_db()
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup
+    print("\n" + "="*80)
+    print("[START] FastAPI Authentication Backend - FRESH START")
+    print("="*80)
+    try:
+        await init_db()
+    except Exception as e:
+        print(f"[ERROR] Database initialization failed: {str(e)}")
+        raise
+    print("="*80 + "\n")
     yield
-    # Shutdown: Close database connections
-    await close_db()
+    # Shutdown
+    print("\n" + "="*80)
+    print("[STOP] Shutting down")
+    print("="*80)
+    try:
+        await close_db()
+    except Exception as e:
+        print(f"[WARN] Database shutdown error: {str(e)}")
+    print("="*80 + "\n")
 
 
 # Create FastAPI application
 app = FastAPI(
-    title="Multi-User Todo API",
-    description="Secure REST API for multi-user todo management with JWT authentication",
-    version="1.0.0",
+    title="Authentication API - NEW VERSION",
+    description="JWT Authentication with Signup, Signin, and Me endpoints",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -43,72 +56,87 @@ app.add_middleware(
 )
 
 
-# Global exception handlers
-
+# Exception handlers
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
-    """
-    Handle custom AppException with structured error response.
-
-    Returns ErrorResponse format with error_code, message, and optional details.
-    """
-    error_response = ErrorResponse(
-        error_code=exc.error_code,
-        message=exc.message,
-        details=[detail.dict() for detail in exc.details] if exc.details else None
-    )
-
+    """Handle custom AppException."""
     return JSONResponse(
         status_code=exc.status_code,
-        content=error_response.model_dump(exclude_none=True)
+        content={
+            "error_code": exc.error_code,
+            "message": exc.message,
+            "details": exc.details if exc.details else None
+        }
     )
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """
-    Handle Pydantic validation errors with structured error response.
-
-    Converts Pydantic validation errors into ErrorResponse format with field-level details.
-    """
+    """Handle validation errors."""
     details = []
     for error in exc.errors():
-        # Extract field name from error location (skip 'body' prefix)
         field = '.'.join(str(loc) for loc in error['loc'] if loc != 'body')
-        details.append(ErrorDetail(
-            field=field,
-            message=error['msg']
-        ))
-
-    error_response = ErrorResponse(
-        error_code="VALIDATION_ERROR",
-        message="Invalid input data",
-        details=details
-    )
-
+        details.append({
+            "field": field,
+            "message": error['msg']
+        })
     return JSONResponse(
         status_code=422,
-        content=error_response.model_dump(exclude_none=True)
+        content={
+            "error_code": "VALIDATION_ERROR",
+            "message": "Invalid input data",
+            "details": details
+        }
     )
 
 
+# Root endpoint
 @app.get("/")
 async def root():
-    """Root endpoint for health check."""
+    """Root endpoint - NEW VERSION."""
     return {
-        "message": "Multi-User Todo API",
+        "message": "Authentication API - NEW VERSION",
         "status": "running",
-        "version": "1.0.0"
+        "version": "2.0.0",
+        "docs": "/docs",
+        "endpoints": {
+            "signup": "/api/auth/signup",
+            "signin": "/api/auth/signin",
+            "me": "/api/auth/me"
+        }
     }
 
 
+# Health check
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
 
 
-# Import and register routers
+# Import and register AUTH ROUTER
+from .api.routes import auth
 from .api.routes import tasks
 
-app.include_router(tasks.router, prefix="/api", tags=["tasks"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(tasks.router, prefix="/api", tags=["Tasks"])
+
+
+# Startup event
+@app.on_event("startup")
+async def startup_message():
+    """Print startup information."""
+    print("\n" + "="*80)
+    print("✅ AUTHENTICATION API STARTED - NEW VERSION")
+    print("="*80)
+    print("[INFO] Swagger UI: http://127.0.0.1:8001/docs")
+    print("[INFO] Health Check: http://127.0.0.1:8001/health")
+    print("")
+    print("🔐 AUTHENTICATION ENDPOINTS:")
+    print("   POST /api/auth/signup  - Register new user")
+    print("   POST /api/auth/signin  - Login user")
+    print("   GET  /api/auth/me      - Get current user (protected)")
+    print("="*80 + "\n")

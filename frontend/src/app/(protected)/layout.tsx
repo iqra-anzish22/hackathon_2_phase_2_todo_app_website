@@ -1,22 +1,42 @@
 /**
  * Protected layout for authenticated routes.
- * Checks authentication and redirects to sign-in if not authenticated.
+ * Checks authentication on client-side and redirects to sign-in if not authenticated.
  */
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+'use client';
 
-export default async function ProtectedLayout({
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { isAuthenticated } from '@/lib/auth-api';
+
+export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Check for authentication token in cookies
-  const cookieStore = cookies();
-  const token = cookieStore.get('auth-token');
+  const router = useRouter();
+  const [isChecking, setIsChecking] = useState(true);
 
-  // Redirect to sign-in if not authenticated
-  if (!token) {
-    redirect('/signin');
+  useEffect(() => {
+    // Check authentication on client-side
+    if (!isAuthenticated()) {
+      router.push('/signin?error=auth_required');
+    } else {
+      setIsChecking(false);
+    }
+  }, [router]);
+
+  // Show loading state while checking authentication
+  if (isChecking) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh'
+      }}>
+        <div>Loading...</div>
+      </div>
+    );
   }
 
   return <>{children}</>;
