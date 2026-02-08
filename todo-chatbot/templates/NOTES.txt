@@ -1,0 +1,123 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your Phase 2 Todo Application has been deployed to Kubernetes.
+
+=============================================================================
+DEPLOYMENT INFORMATION
+=============================================================================
+
+Chart Name: {{ .Chart.Name }}
+Chart Version: {{ .Chart.Version }}
+App Version: {{ .Chart.AppVersion }}
+Release Name: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+=============================================================================
+SERVICES DEPLOYED
+=============================================================================
+
+{{- if .Values.backend.enabled }}
+✓ Backend Service (FastAPI)
+  - Image: {{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}
+  - Service Type: {{ .Values.backend.service.type }}
+  - Port: {{ .Values.backend.service.port }}
+  {{- if eq .Values.backend.service.type "NodePort" }}
+  - NodePort: {{ .Values.backend.service.nodePort }}
+  {{- end }}
+{{- end }}
+
+{{- if .Values.frontend.enabled }}
+✓ Frontend Service (Next.js)
+  - Image: {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
+  - Service Type: {{ .Values.frontend.service.type }}
+  - Port: {{ .Values.frontend.service.port }}
+  {{- if eq .Values.frontend.service.type "NodePort" }}
+  - NodePort: {{ .Values.frontend.service.nodePort }}
+  {{- end }}
+{{- end }}
+
+=============================================================================
+ACCESS YOUR APPLICATION
+=============================================================================
+
+{{- if eq .Values.backend.service.type "NodePort" }}
+
+1. Get the Minikube IP:
+   $ minikube ip
+
+2. Access the Backend API:
+   $ export MINIKUBE_IP=$(minikube ip)
+   $ echo "Backend API: http://$MINIKUBE_IP:{{ .Values.backend.service.nodePort }}"
+   $ echo "API Docs: http://$MINIKUBE_IP:{{ .Values.backend.service.nodePort }}/docs"
+   $ echo "Health Check: http://$MINIKUBE_IP:{{ .Values.backend.service.nodePort }}/health"
+
+3. Access the Frontend:
+   $ echo "Frontend: http://$MINIKUBE_IP:{{ .Values.frontend.service.nodePort }}"
+
+Or use minikube service command:
+   $ minikube service {{ include "phase2-todo-app.fullname" . }}-backend --url
+   $ minikube service {{ include "phase2-todo-app.fullname" . }}-frontend --url
+
+{{- else if eq .Values.backend.service.type "LoadBalancer" }}
+
+1. Get the Backend LoadBalancer IP:
+   $ kubectl get svc {{ include "phase2-todo-app.fullname" . }}-backend -n {{ .Release.Namespace }}
+
+2. Get the Frontend LoadBalancer IP:
+   $ kubectl get svc {{ include "phase2-todo-app.fullname" . }}-frontend -n {{ .Release.Namespace }}
+
+{{- else }}
+
+1. Port-forward to access Backend:
+   $ kubectl port-forward svc/{{ include "phase2-todo-app.fullname" . }}-backend {{ .Values.backend.service.port }}:{{ .Values.backend.service.port }} -n {{ .Release.Namespace }}
+   Then access: http://localhost:{{ .Values.backend.service.port }}
+
+2. Port-forward to access Frontend:
+   $ kubectl port-forward svc/{{ include "phase2-todo-app.fullname" . }}-frontend {{ .Values.frontend.service.port }}:{{ .Values.frontend.service.port }} -n {{ .Release.Namespace }}
+   Then access: http://localhost:{{ .Values.frontend.service.port }}
+
+{{- end }}
+
+=============================================================================
+USEFUL COMMANDS
+=============================================================================
+
+View all resources:
+  $ kubectl get all -l app.kubernetes.io/instance={{ .Release.Name }} -n {{ .Release.Namespace }}
+
+View pods:
+  $ kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }} -n {{ .Release.Namespace }}
+
+View logs:
+  $ kubectl logs -l app.kubernetes.io/component=backend -n {{ .Release.Namespace }}
+  $ kubectl logs -l app.kubernetes.io/component=frontend -n {{ .Release.Namespace }}
+
+Describe services:
+  $ kubectl describe svc {{ include "phase2-todo-app.fullname" . }}-backend -n {{ .Release.Namespace }}
+  $ kubectl describe svc {{ include "phase2-todo-app.fullname" . }}-frontend -n {{ .Release.Namespace }}
+
+Check pod status:
+  $ kubectl get pods -n {{ .Release.Namespace }} -w
+
+=============================================================================
+TROUBLESHOOTING
+=============================================================================
+
+If pods are not starting:
+1. Check pod status:
+   $ kubectl describe pod -l app.kubernetes.io/instance={{ .Release.Name }} -n {{ .Release.Namespace }}
+
+2. Check logs:
+   $ kubectl logs -l app.kubernetes.io/component=backend -n {{ .Release.Namespace }} --tail=50
+   $ kubectl logs -l app.kubernetes.io/component=frontend -n {{ .Release.Namespace }} --tail=50
+
+3. Verify images are loaded in minikube:
+   $ minikube ssh docker images | grep phase2
+
+4. If images are missing, load them:
+   $ minikube image load phase2-backend:latest
+   $ minikube image load phase2-frontend:latest
+
+=============================================================================
+
+For more information, visit: https://github.com/your-repo/phase2-todo-app

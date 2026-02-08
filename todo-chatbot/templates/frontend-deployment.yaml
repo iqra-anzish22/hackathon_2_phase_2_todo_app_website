@@ -1,0 +1,49 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "phase2-todo-app.fullname" . }}-frontend
+  labels:
+    {{- include "phase2-todo-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "phase2-todo-app.frontend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "phase2-todo-app.frontend.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "phase2-todo-app.serviceAccountName" . }}
+      containers:
+      - name: frontend
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.frontend.service.targetPort }}
+          protocol: TCP
+        env:
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "phase2-todo-app.fullname" . }}-auth
+              key: BETTER_AUTH_SECRET
+        envFrom:
+        - configMapRef:
+            name: {{ include "phase2-todo-app.fullname" . }}-frontend-config
+        {{- with .Values.frontend.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.frontend.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.frontend.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- end }}

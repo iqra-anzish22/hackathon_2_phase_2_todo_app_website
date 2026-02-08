@@ -1,0 +1,167 @@
+# Default values for phase2-todo-app
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  # For local minikube deployment, use Never to avoid pulling from registry
+  imagePullPolicy: Never
+
+# Backend service configuration
+backend:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: phase2-backend
+    tag: latest
+    pullPolicy: Never
+
+  service:
+    type: NodePort
+    port: 8001
+    targetPort: 8001
+    nodePort: 30001
+
+  env:
+    DEBUG: "false"
+    ENVIRONMENT: "production"
+    CORS_ORIGINS: "http://localhost:30000"
+    # Database URL - using PostgreSQL
+    DATABASE_URL: "postgresql+asyncpg://neondb_owner:npg_9NdKqixjCGr5@ep-wild-glitter-aipjit0i-pooler.c-4.us-east-1.aws.neon.tech/neondb?ssl=require"
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8001
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8001
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Frontend service configuration
+frontend:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: phase2-frontend
+    tag: latest
+    pullPolicy: Never
+
+  service:
+    type: NodePort
+    port: 3000
+    targetPort: 3000
+    nodePort: 30000
+
+  env:
+    NODE_ENV: "production"
+    NEXT_PUBLIC_API_URL: "http://localhost:30001"
+    BETTER_AUTH_URL: "http://localhost:30000"
+    DATABASE_URL: "/app/data/local.db"
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Shared secret for JWT authentication
+# IMPORTANT: Change this in production!
+auth:
+  secret: "rPW1fa7hXGmqdsjXeZBxo1nBv642WGFM"
+
+# Service Account
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+# Pod annotations and labels
+podAnnotations: {}
+podLabels: {}
+
+# Security contexts
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# Ingress configuration (disabled for local deployment)
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: todo-app.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Autoscaling (disabled for local deployment)
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Persistent volumes (optional for SQLite)
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 1Gi
